@@ -3,14 +3,10 @@ const redis = require("./config/redis");
 
 const app = express();
 
-app.get("/redis-test", async (req, res) => {
-    await redis.set("saas_test", "redis_connected");
-    const value = await redis.get("saas_test");
+app.use(express.json());
 
-    res.json({
-        message: "Redis is working",
-        value,
-    });
-});
+app.use("/api/auth", require("./modules/auth/auth.routes"));
+app.use("/api/projects", require("./modules/project/project.routes"));
+app.use("/api/users", require("./modules/user/user.routes"));
 
 module.exports = app;
