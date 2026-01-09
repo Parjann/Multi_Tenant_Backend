@@ -1,4 +1,5 @@
 const redis = require("../../config/redis");
+const auditLog = require("../../utils/auditLogger");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
@@ -13,7 +14,7 @@ exports.inviteUser = async (req, res) => {
     }
 
     try {
-        // 🔍 Check if email already exists
+        // Check if email already exists
         const userKeys = await redis.keys("user:*");
         for (const key of userKeys) {
             const user = await redis.hGetAll(key);
@@ -27,7 +28,7 @@ exports.inviteUser = async (req, res) => {
         const userId = crypto.randomUUID();
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // ✅ Create user
+        // Create user
         await redis.hSet(`user:${userId}`, {
             email,
             password: hashedPassword,
@@ -36,8 +37,15 @@ exports.inviteUser = async (req, res) => {
             createdAt: Date.now(),
         });
 
-        // ✅ Map user to tenant
+        // Map user to tenant
         await redis.sAdd(`tenant:${tenantId}:users`, userId);
+
+        await auditLog(req.tenant.id, {
+            action: "USER_INVITED",
+            userId: req.user.userId,
+            role: req.user.role,
+            resourceId: userId,
+        });
 
         res.status(201).json({
             message: "User invited successfully",
