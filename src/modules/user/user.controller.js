@@ -1,15 +1,16 @@
 const redis = require("../../config/redis");
 const auditLog = require("../../utils/auditLogger");
+const sendMail = require("../../utils/mailer"); // Correct import
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
 exports.inviteUser = async (req, res) => {
-    const { email, password, role = "member" } = req.body;
+    const { email, role = "member" } = req.body;
     const tenantId = req.tenant.id;
 
-    if (!email || !password) {
+    if (!email) {
         return res.status(400).json({
-            message: "Email and password are required",
+            message: "Email is required",
         });
     }
 
@@ -25,32 +26,34 @@ exports.inviteUser = async (req, res) => {
             }
         }
 
-        const userId = crypto.randomUUID();
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // Generate invite token
+        const inviteToken = crypto.randomUUID();
 
-        // Create user
-        await redis.hSet(`user:${userId}`, {
+        // Store invite in Redis (expire in 24 hours)
+        await redis.hSet(`invite:${inviteToken}`, {
             email,
-            password: hashedPassword,
             tenantId,
             role,
-            createdAt: Date.now(),
         });
+        await redis.expire(`invite:${inviteToken}`, 86400);
 
-        // Map user to tenant
-        await redis.sAdd(`tenant:${tenantId}:users`, userId);
+        // Send Email
+        const inviteLink = `http://localhost:5000/accept-invite?token=${inviteToken}`;
+        await sendMail(email, "You have been invited!", `
+            <h1>Welcome!</h1>
+            <p>You have been invited to join the platform.</p>
+            <a href="${inviteLink}">Click here to accept invite</a>
+        `);
 
         await auditLog(req.tenant.id, {
             action: "USER_INVITED",
             userId: req.user.userId,
             role: req.user.role,
-            resourceId: userId,
+            resourceId: email,
         });
 
         res.status(201).json({
-            message: "User invited successfully",
-            userId,
-            role,
+            message: "Invitation sent successfully",
         });
     } catch (error) {
         console.error(error);
@@ -58,4 +61,43 @@ exports.inviteUser = async (req, res) => {
             message: "Server error",
         });
     }
+};
+
+exports.acceptInvite = async (req, res) => {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+        return res.status(400).json({
+            message: "Token and password are required",
+        });
+    }
+
+    const inviteKey = `invite:${token}`;
+    const invite = await redis.hGetAll(inviteKey);
+
+    if (!invite.email) {
+        return res.status(400).json({
+            message: "Invalid or expired invite",
+        });
+    }
+
+    const userId = crypto.randomUUID();
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await redis.hSet(`user:${userId}`, {
+        email: invite.email,
+        password: hashedPassword,
+        tenantId: invite.tenantId,
+        role: invite.role,
+        createdAt: Date.now(),
+    });
+
+    await redis.sAdd(`tenant:${invite.tenantId}:users`, userId);
+
+    // Remove invite after use
+    await redis.del(inviteKey);
+
+    res.json({
+        message: "Account activated successfully",
+    });
 };

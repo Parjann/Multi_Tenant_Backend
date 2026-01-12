@@ -7,6 +7,9 @@ const role = require("../../middleware/role.middleware");
 
 const controller = require("./user.controller");
 
+// Public routes
+router.post("/accept-invite", controller.acceptInvite);
+
 // Admin-only routes
 router.post("/invite", auth, tenant, role(["admin"]), controller.inviteUser);
 
