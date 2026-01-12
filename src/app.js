@@ -1,13 +1,13 @@
 const express = require("express");
 const redis = require("./config/redis");
-const rateLimit = require("./middleware/rateLimit.middleware");
+const rateLimit = require("./middleware/rateLimit.factory");
 const app = express();
 
 app.use(express.json());
 
 // app.set("trust proxy", true);
 
-app.use(rateLimit);
+app.use(rateLimit({ limit: 100, windowSeconds: 60 }));
 
 app.use("/api/auth", require("./modules/auth/auth.routes"));
 app.use("/api/projects", require("./modules/project/project.routes"));
