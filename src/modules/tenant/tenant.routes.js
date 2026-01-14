@@ -4,6 +4,7 @@ const router = express.Router();
 const auth = require("../../middleware/auth.middleware");
 const tenant = require("../../middleware/tenant.middleware");
 const role = require("../../middleware/role.middleware");
+const tenantStatus = require("../../middleware/tenantStatus.middleware");
 const controller = require("./tenant.controller");
 
 router.post("/suspend", auth, tenant, role(["admin"]), controller.suspendTenant);

@@ -32,6 +32,7 @@ exports.register = async (req, res) => {
         await redis.hSet(`tenant:${tenantId}`, {
             name: companyName,
             plan: "free",
+            status: "active",
             owner: userId,
             createdAt: Date.now(),
         });
