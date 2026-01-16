@@ -9,5 +9,6 @@ const controller = require("./tenant.controller");
 
 router.post("/suspend", auth, tenant, role(["admin"]), controller.suspendTenant);
 router.post("/activate", auth, tenant, role(["admin"]), controller.activateTenant);
+router.post("/plan", auth, tenant, role(["admin"]), controller.changePlan);
 
 module.exports = router;
