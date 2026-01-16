@@ -32,3 +32,19 @@ exports.activateTenant = async (req, res) => {
         message: "Tenant activated successfully",
     });
 };
+
+exports.changePlan = async (req, res) => {
+    const { plan } = req.body;
+    const tenantId = req.tenant.id;
+
+    const allowedPlans = ["free", "pro", "enterprise"];
+    if (!allowedPlans.includes(plan)) {
+        return res.status(400).json({ message: "Invalid plan" });
+    }
+
+    await redis.hSet(`tenant:${tenantId}`, "plan", plan);
+
+    res.json({
+        message: `Tenant upgraded to ${plan.toUpperCase()} plan`,
+    });
+};
