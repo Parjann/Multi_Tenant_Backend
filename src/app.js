@@ -6,6 +6,20 @@ const app = express();
 
 app.use(express.json());
 
+// Root route
+app.get("/", (req, res) => {
+    res.json({
+        message: "Backend is running on AWS 🚀",
+        status: "healthy",
+        environment: "production",
+    });
+});
+
+// Health route
+app.get("/health", (req, res) => {
+    res.json({ status: "OK" });
+});
+
 // app.set("trust proxy", true);
 
 app.use(rateLimit({ limit: 100, windowSeconds: 60 }));
